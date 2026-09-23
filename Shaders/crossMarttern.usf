@@ -1,0 +1,8 @@
+struct functions 
+{
+  float box (in float2 _st, in float2 _size){
+   _size = float2(0.5) - _size *0.5;
+
+ }
+
+}

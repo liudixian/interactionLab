@@ -1,0 +1,40 @@
+{
+    "comment": {
+        "1/3": "此文件由插件Blender for UnrealEngine生成: https://github.com/xavier150/Blender-For-UnrealEngine-Addons",
+        "2/3": "用于在UE中导入所有类型的资源, 如StaticMesh、SkeletalMesh、Animation、Pose、Camera等",
+        "3/3": "此脚本应在UE编辑器中与其Python插件一起使用: https://docs.unrealengine.com/en-US/Engine/Editor/ScriptingAndAutomation/Python"
+    },
+    "info": {
+        "date_time_str": "2026-07-28 22:45:13",
+        "timestamp": 1785249913,
+        "blender_file": "E:\\P4worksSpace2\\LG_Main\\lingangInstallation\\Plugins\\genartlib\\Resources\\MP\\faceMesh.blend",
+        "addon_version": "Version 4.4.6",
+        "addon_path": "C:\\Users\\liudi\\AppData\\Roaming\\Blender Foundation\\Blender\\5.1\\extensions\\user_default\\unrealengine_assets_exporter",
+        "import_module_path": "C:\\Users\\liudi\\AppData\\Roaming\\Blender Foundation\\Blender\\5.1\\extensions\\user_default\\unrealengine_assets_exporter\\bfu_import_module"
+    },
+    "unreal_import_location": "genartLib\\Meshed\\BlendMeshes",
+    "assets": [
+        {
+            "scene_unit_scale": 1.0,
+            "asset_name": "Cell",
+            "asset_type": "StaticMesh",
+            "asset_import_name": "SM_Cell",
+            "asset_import_path": "genartLib\\Meshed\\BlendMeshes",
+            "files": [
+                {
+                    "type": "FBX",
+                    "content_type": "",
+                    "file_path": "E:\\Game\\genartLib\\Meshed\\SM_Meshes\\SM_Cell.fbx"
+                },
+                {
+                    "type": "JSON",
+                    "content_type": "ADDITIONAL_DATA",
+                    "file_path": "E:\\Game\\genartLib\\Meshed\\SM_Meshes\\SM_Cell_additional_data.json"
+                }
+            ],
+            "auto_generate_collision": true,
+            "collision_trace_flag": "CTF_UseDefault",
+            "import_as_lod_mesh": false
+        }
+    ]
+}

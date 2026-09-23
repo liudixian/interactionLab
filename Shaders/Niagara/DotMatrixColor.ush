@@ -1,0 +1,107 @@
+﻿// ============================================================================
+// 材质 Custom 节点 HLSL - 圆点颜色矩阵 (从贴图采样每格颜色)
+// 输出: 用 return 返回 float4
+//
+// 虚拟路径: /GenartLib/Niagara/DotMatrixColor.ush
+// 用法: 直接粘贴本文件全部内容到材质 Custom 节点代码框 (不要用 #include, UE5.8 解析不稳定)
+//
+// 输入(在材质 Custom 节点 "Input Name" 列表声明, 代码内直接使用, 不要声明):
+//   uv              float2        采样 UV (通常连 TexCoord)
+//   TexCol          Texture2D     颜色贴图 (用 TextureObjectParameter2D 节点提供)
+//   TexColSampler   SamplerState  采样器 (用 SamplerState 节点提供, 如 Linear Wrap)
+//
+// 可调参数(改下方默认值; 如需在材质里调, 在 Input Name 追加同名引脚并删掉该行声明):
+//   CellSize / DotRadius / EdgeSoft / BgColor / SampleMode
+//   SizeMode / MinRadius / SizeGamma / AspectRatio
+// ============================================================================
+
+// ---- 可调参数(局部常量, 改值即调参) ----
+float  CellSize   = 0.01;               // 单元格大小 (UV 空间 Y 方向, 越小越密; X 方向自动按 aspect 补偿)
+float  DotRadius  = 0.5;                // 圆点半径 (相对单元格边长 0~0.5, 0.5=内切圆)
+float  EdgeSoft   = 0.0;                // 边缘抗锯齿 (0=硬边, >0=内部边缘渐变)
+float4 BgColor    = float4(0,0,0,0);    // 背景色 RGBA (圆点之外区域)
+int    SampleMode = 0;                  // 采样模式: 0=cell中心 1=cell内localUV 2=uv直采
+int    SizeMode   = 0;                  // 半径模式: 0=固定 1=亮度驱动(越亮越大)
+float  MinRadius  = 0.0;                // 亮度驱动下限半径 (相对单元格边长, 最暗时的半径)
+float  SizeGamma  = 1.0;                // 亮度->半径的伽马校正 (1=线性, >1中暗部放大, <1中亮部放大)
+float  AspectRatio = 1.0;               // 贴图宽高比 (width/height, 如 1920/1080=1.778; 1.0=不补偿; <1=竖图)
+
+// ---- 函数库 ----
+struct GR2DFunctions
+{
+    // 圆点遮罩: localUV 为单元格内坐标 (0~1), 返回 0..1 覆盖度
+    // 注意: 调用前需保证 cell 在物理空间是正方形 (由主逻辑的各向异性 cellScale 保证),
+    // 这样 localUV 的 0~1 在 X/Y 方向对应相同物理尺寸, 圆自然为正圆, 无需 aspect 补偿
+    float dotMask(float2 localUV, float radius, float edgeSoft)
+    {
+        float2 p = localUV - 0.5;
+        float d = length(p);
+        float r = max(radius, 1e-5);
+        float e = max(edgeSoft, 1e-5);
+        return saturate((r - d) / e + 0.5);
+    }
+
+    // RGB -> 亮度 (Rec.709 luma)
+    float luminance(float3 rgb)
+    {
+        return dot(rgb, float3(0.2126, 0.7152, 0.0722));
+    }
+};
+GR2DFunctions f;
+
+// ---- 主逻辑 ----
+// 0) 贴图宽高比 (用户传入; <=0 时按 1.0 兜底)
+float aspect = AspectRatio > 0.0 ? AspectRatio : 1.0;
+
+// 1) uv -> 单元格索引 + 单元格内局部坐标 (0~1)
+//    cell 在 UV 空间各向异性: X 方向除以 aspect, 使物理 cell 为正方形
+//    (UV x 方向 1 单位 = W 像素, y 方向 1 单位 = H 像素; W=aspect*H)
+//    cellScale.x = CellSize/aspect -> 物理 x 边 = (CellSize/aspect)*W = CellSize*H
+//    cellScale.y = CellSize        -> 物理 y 边 = CellSize*H
+//    两者相等, 物理 cell 为正方形, 圆点间距在 X/Y 方向均匀
+float2 cellScale = float2(CellSize / aspect, CellSize);
+float2 cellUV  = uv / max(cellScale, 1e-6);
+int2   cell    = int2(floor(cellUV));
+float2 localUV = frac(cellUV);
+
+// 2) 计算贴图采样 UV
+//    直接由 cell 在 UV 空间的实际位置计算, 采样位置与圆点位置完全对应, 无偏移
+//    cell 起点 UV = cell * cellScale; cell 中心 UV = (cell + 0.5) * cellScale
+float2 sampleUV = float2(0.0, 0.0);
+if (SampleMode == 0)
+{
+    // 模式 0: 按 cell 中心采样 (整格同色, 圆点显示该格中心贴图色)
+    sampleUV = (float2(cell) + 0.5) * cellScale;
+}
+else if (SampleMode == 1)
+{
+    // 模式 1: 按 cell 内 localUV 采样 (圆点内显示贴图对应小块, 有亚像素变化)
+    sampleUV = (float2(cell) + localUV) * cellScale;
+}
+else
+{
+    // 模式 2: 用原始 uv 直接采样 (连续采样, 不按 cell 离散)
+    sampleUV = uv;
+}
+
+// 3) 采样贴图 (材质内 Texture2D 必须配 SamplerState, 不能用 Niagara 的 out 参数语法)
+float4 texSampled = Texture2DSample(TexCol, TexColSampler, sampleUV);
+
+// 4) 计算有效半径 (相对 cell 边长比例; cell 物理已为正方形, 无需短边换算)
+float effectiveRadius = DotRadius;
+if (SizeMode == 1)
+{
+    // 亮度驱动: 越亮越大, 越暗越小
+    // lum 0..1 -> 半径 MinRadius..DotRadius, 再做伽马校正调节过渡曲线
+    float lum = f.luminance(texSampled.rgb);
+    float t = pow(saturate(lum), max(SizeGamma, 1e-4));
+    effectiveRadius = lerp(MinRadius, DotRadius, t);
+}
+
+// 5) 圆点覆盖度 (0..1), cell 物理已为正方形, 圆点自然为正圆
+float mask = f.dotMask(localUV, effectiveRadius, EdgeSoft);
+
+// 6) 在圆点(贴图色)与背景间按 mask 混合
+float3 outRGB = lerp(BgColor.rgb, texSampled.rgb, mask);
+float  outA   = lerp(BgColor.a,   texSampled.a,   mask);
+return float4(outRGB, outA);

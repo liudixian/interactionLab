@@ -1,0 +1,53 @@
+# ============ 发布版插件（仅二进制 + 蓝图 + 模型，不含源码） ============
+
+# ---- C++ 源码：发布版不跟踪 ----
+Source/**/*.cpp
+Source/**/*.h
+Source/**/*.cs
+Source/**/Generated/**
+Source/**/Intermediate/**
+Source/**/Public/**
+Source/**/Private/**
+Source/GRBodyState/**
+Source/GRKinectAzure/**
+Source/GRLeapMotion/**
+Source/GRLeapMotionEditor/**
+Source/GRMatting/**
+Source/GRMediapipe/**
+Source/GRTuio20/**
+Source/GRVSTHost/**
+Source/GRVSTHostEditor/**
+Source/GRYolo/**
+Source/InteractiveLab/**
+Source/InteractiveLabEditor/**
+Source/ThirdParty/**/include/**
+Source/ThirdParty/**/lib/**
+
+# ---- 调试符号 / 中间产物 ----
+*.pdb
+*.patch_*.exe
+*.patch_*.exp
+*.patch_*.lib
+*.ilc
+*.ildb
+*.ipdb
+Intermediate/
+DerivedDataCache/
+*.sln
+*.slnx
+.vs/
+
+# ---- 本地归档 / 备份 ----
+*.7z
+*.bak
+*.orig
+__pycache__/
+*.pyc
+
+# ---- Kinect GPU 大运行库（CUDA/TensorRT/cuDNN，单文件 100~560MB，GitHub 超限；CPU 模式不加载） ----
+Binaries/ThirdParty/KinectAzure/Win64/GPU/
+Binaries/ThirdParty/KinectAzure/Win64/onnxruntime_providers_cuda.dll
+Binaries/ThirdParty/KinectAzure/Win64/onnxruntime_providers_tensorrt.dll
+
+# ---- Kinect Body Tracking ONNX 模型（单文件 >100MB，GitHub 超限） ----
+ThirdParty/KinectAzure/k4abt/models/*.onnx

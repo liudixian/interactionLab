@@ -1,0 +1,131 @@
+﻿// ============================================================================
+// GR2DGraphics.ush
+// 2D 图形 SDF 函数库 - 供材质 Custom 节点 / Niagara Custom HLSL 节点复用
+//
+// 虚拟路径: /GenartLib/GR2DGraphics.ush
+// 用法:
+//   在材质 Custom 节点中  #include "/GenartLib/GR2DGraphics.ush"
+//   在 Niagara Custom HLSL 节点中 粘贴整段 (Niagara 对 include 支持不稳定)
+//   然后用 GR2D.sdLine(...) / GR2D.sdCircle(...) 等调用
+//
+// 坐标约定: 像素坐标, 左上原点, X 向右, Y 向下
+// 距离约定: SDF 函数返回像素距离; 负=内部, 正=外部
+// Mask 约定: 1=覆盖, 0=透明, 已内置 1 像素 AA
+// ============================================================================
+#ifndef GR2D_GRAPHICS_USH
+#define GR2D_GRAPHICS_USH
+
+struct GR2DFunctions
+{
+    // ============================ 基础 SDF ============================
+
+    // 点 P 到线段 AB 的距离
+    float sdLine(float2 P, float2 A, float2 B)
+    {
+        float2 PA = P - A;
+        float2 BA = B - A;
+        float t = saturate(dot(PA, BA) / max(dot(BA, BA), 1e-8));
+        return length(PA - BA * t);
+    }
+
+    // 点 P 到圆 (中心 C, 半径 R) 的有符号距离
+    // 返回 <0 在圆内, >0 在圆外
+    float sdCircle(float2 P, float2 C, float R)
+    {
+        return length(P - C) - R;
+    }
+
+    // 点 P 到圆描边的距离 (绝对值, 用于画圆环)
+    float sdCircleBorder(float2 P, float2 C, float R)
+    {
+        return abs(length(P - C) - R);
+    }
+
+    // 2D 叉积 (标量)
+    float cross2(float2 V, float2 W)
+    {
+        return V.x * W.y - V.y * W.x;
+    }
+
+    // 射线法判断点在任意四边形内 (凸/凹/自相交均可)
+    // 从 P 向右发射水平射线, 统计与边的交点数, 奇数=内部
+    float pointInQuad(float2 P, float2 V0, float2 V1, float2 V2, float2 V3)
+    {
+        float2 edges[4];
+        edges[0] = V0; edges[1] = V1; edges[2] = V2; edges[3] = V3;
+        
+        int crossings = 0;
+        for (int i = 0, j = 3; i < 4; j = i++)
+        {
+            float2 A = edges[i];
+            float2 B = edges[j];
+            
+            // 检查水平射线是否与边 AB 相交
+            if (((A.y > P.y) != (B.y > P.y)))
+            {
+                // 计算交点 x 坐标
+                float xIntersect = A.x + (P.y - A.y) * (B.x - A.x) / (B.y - A.y);
+                if (P.x < xIntersect)
+                {
+                    crossings++;
+                }
+            }
+        }
+        
+        // 奇数个交点 = 内部
+        return (crossings % 2 == 1) ? 1.0 : 0.0;
+    }
+
+    // 点 P 到四边形 4 条边的最短距离
+    float sdQuadEdge(float2 P, float2 V0, float2 V1, float2 V2, float2 V3)
+    {
+        float d0 = sdLine(P, V0, V1);
+        float d1 = sdLine(P, V1, V2);
+        float d2 = sdLine(P, V2, V3);
+        float d3 = sdLine(P, V3, V0);
+        return min(min(d0, d1), min(d2, d3));
+    }
+
+    // 点 P 到 4 个顶点圆描边的最短距离
+    float sdCornerCircles(float2 P, float2 V0, float2 V1, float2 V2, float2 V3, float R)
+    {
+        float d0 = abs(length(P - V0) - R);
+        float d1 = abs(length(P - V1) - R);
+        float d2 = abs(length(P - V2) - R);
+        float d3 = abs(length(P - V3) - R);
+        return min(min(d0, d1), min(d2, d3));
+    }
+
+    // ============================ Mask 计算 ============================
+
+    // 厚度描边 mask: dist 到边的距离, thickness 线宽 (像素)
+    // 返回 1=描边覆盖, 0=外部, 内置 1 像素 AA
+    float strokeMask(float dist, float thickness)
+    {
+        float halfT = max(thickness, 1.0) * 0.5;
+        return 1.0 - smoothstep(halfT - 0.5, halfT + 0.5, dist);
+    }
+
+    // 填充 mask: dist<0 完全填充, dist>0 外部
+    float fillMask(float dist)
+    {
+        return 1.0 - smoothstep(-0.5, 0.5, dist);
+    }
+
+    // ============================ 颜色混合 ============================
+
+    // Alpha-Over 混合: 在 Dest 之上叠加 Src
+    // Dest/Src 均为 float4 (linear, RGB 0-1, A 0-1)
+    float4 alphaOver(float4 Dest, float4 Src)
+    {
+        float outA = Src.a + Dest.a * (1.0 - Src.a);
+        float3 outRGB = (Src.rgb * Src.a + Dest.rgb * Dest.a * (1.0 - Src.a))
+                      / max(outA, 1e-6);
+        return float4(outRGB, outA);
+    }
+};
+
+// 全局实例 (供 #include 风格调用)
+GR2DFunctions GR2D;
+
+#endif // GR2D_GRAPHICS_USH

@@ -1,0 +1,164 @@
+﻿// ============================================================================
+// Niagara Custom HLSL 节点粘贴模板 - 在 RenderTarget 2D 上画四边形线框
+// (4 个顶点圆 + 4 条边 + 可选填充)
+//
+// 用法:
+// 1. Niagara Emitter 中添加 "Render Target 2D" Data Interface, 命名为 RT
+// 2. 在 Particle Update (GPU) 阶段加 Custom HLSL 节点
+// 3. 粘贴本文件全部内容到节点
+// 4. 节点自动生成输入引脚, 在 Stack 中绑定参数
+// 5. Emitter 发射 1 个粒子 = 画 1 个四边形; 多粒子 = 多个四边形
+//
+// 注意: RT 在每帧绘制前需要 Clear (可在 Emitter Update 阶段用
+//       "Clear Render Target" 模块或单独的 SetRenderTargetValue 清零)
+// ============================================================================
+
+// ---- 输入引脚 ----
+float2 P0;               // 顶点 0 (像素坐标, 左上原点)
+float2 P1;               // 顶点 1
+float2 P2;               // 顶点 2
+float2 P3;               // 顶点 3 (按顺/逆时针顺序)
+int    bDrawCircles;     // 1=画顶点圆, 0=不画
+float  CircleRadius;     // 顶点圆半径 (像素)
+float4 LineColor;        // 四条边的颜色 RGBA
+float4 StrokeColor;      // 顶点圆描边色 RGBA
+float  LineThickness;    // 线宽 (像素, 边和圆共用)
+int    bFill;            // 1=填充四边形, 0=不填充
+float4 FillColor;        // 填充色 RGBA
+
+// ---- 函数库 (SDF + mask) ----
+struct GR2DFunctions
+{
+    float sdLine(float2 P, float2 A, float2 B)
+    {
+        float2 PA = P - A;
+        float2 BA = B - A;
+        float t = saturate(dot(PA, BA) / max(dot(BA, BA), 1e-8));
+        return length(PA - BA * t);
+    }
+
+    float cross2(float2 V, float2 W)
+    {
+        return V.x * W.y - V.y * W.x;
+    }
+
+    // 射线法判断点在任意四边形内 (凸/凹/自相交均可)
+    // 从 P 向右发射水平射线, 统计与边的交点数, 奇数=内部
+    float pointInQuad(float2 P, float2 V0, float2 V1, float2 V2, float2 V3)
+    {
+        float2 edges[4];
+        edges[0] = V0; edges[1] = V1; edges[2] = V2; edges[3] = V3;
+        
+        int crossings = 0;
+        for (int i = 0, j = 3; i < 4; j = i++)
+        {
+            float2 A = edges[i];
+            float2 B = edges[j];
+            
+            // 检查水平射线是否与边 AB 相交
+            if (((A.y > P.y) != (B.y > P.y)))
+            {
+                // 计算交点 x 坐标
+                float xIntersect = A.x + (P.y - A.y) * (B.x - A.x) / (B.y - A.y);
+                if (P.x < xIntersect)
+                {
+                    crossings++;
+                }
+            }
+        }
+        
+        // 奇数个交点 = 内部
+        return (crossings % 2 == 1) ? 1.0 : 0.0;
+    }
+
+    // 到 4 条边最短距离
+    float sdQuadEdge(float2 P, float2 V0, float2 V1, float2 V2, float2 V3)
+    {
+        float d0 = sdLine(P, V0, V1);
+        float d1 = sdLine(P, V1, V2);
+        float d2 = sdLine(P, V2, V3);
+        float d3 = sdLine(P, V3, V0);
+        return min(min(d0, d1), min(d2, d3));
+    }
+
+    // 到 4 个顶点圆描边最短距离
+    float sdCornerCircles(float2 P, float2 V0, float2 V1, float2 V2, float2 V3, float R)
+    {
+        float d0 = abs(length(P - V0) - R);
+        float d1 = abs(length(P - V1) - R);
+        float d2 = abs(length(P - V2) - R);
+        float d3 = abs(length(P - V3) - R);
+        return min(min(d0, d1), min(d2, d3));
+    }
+
+    float strokeMask(float dist, float thickness)
+    {
+        float halfT = max(thickness, 1.0) * 0.5;
+        return 1.0 - smoothstep(halfT - 0.5, halfT + 0.5, dist);
+    }
+
+    float4 alphaOver(float4 Dest, float4 Src)
+    {
+        float outA = Src.a + Dest.a * (1.0 - Src.a);
+        float3 outRGB = (Src.rgb * Src.a + Dest.rgb * Dest.a * (1.0 - Src.a))
+                      / max(outA, 1e-6);
+        return float4(outRGB, outA);
+    }
+};
+GR2DFunctions f;
+
+// ---- 主逻辑 ----
+
+// 1) bbox (含圆 + 线宽余量)
+float pad = CircleRadius + LineThickness + 1.0;
+float2 bmin = min(min(P0, P1), min(P2, P3)) - pad;
+float2 bmax = max(max(P0, P1), max(P2, P3)) + pad;
+int2 pmin = int2(floor(bmin));
+int2 pmax = int2(ceil(bmax));
+
+// 2) 遍历 bbox 内像素
+for (int y = pmin.y; y <= pmax.y; y++)
+{
+    for (int x = pmin.x; x <= pmax.x; x++)
+    {
+        float2 p = float2(x, y);
+        float4 out = float4(0.0, 0.0, 0.0, 0.0);
+
+        // (a) 填充
+        if (bFill > 0)
+        {
+            float inside = f.pointInQuad(p, P0, P1, P2, P3);
+            if (inside > 0.5)
+            {
+                out = f.alphaOver(out, FillColor);
+            }
+        }
+
+        // (b) 四条边
+        {
+            float d = f.sdQuadEdge(p, P0, P1, P2, P3);
+            float m = f.strokeMask(d, LineThickness);
+            if (m > 0.001)
+            {
+                out = f.alphaOver(out, float4(LineColor.rgb, LineColor.a * m));
+            }
+        }
+
+        // (c) 顶点圆
+        if (bDrawCircles > 0)
+        {
+            float d = f.sdCornerCircles(p, P0, P1, P2, P3, CircleRadius);
+            float m = f.strokeMask(d, LineThickness);
+            if (m > 0.001)
+            {
+                out = f.alphaOver(out, float4(StrokeColor.rgb, StrokeColor.a * m));
+            }
+        }
+
+        // (d) 写入 RT
+        if (out.a > 0.001)
+        {
+            RT.SetRenderTargetValue(true, x, y, out);
+        }
+    }
+}

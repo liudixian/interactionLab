@@ -1,0 +1,157 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "InteractiveLab",
+	"Description": "",
+	"Category": "Other",
+	"CreatedBy": "ldx",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "GRBodyState",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRLeapMotionEditor",
+			"Type": "UncookedOnly",
+			"LoadingPhase": "PreDefault",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "InteractiveLab",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false
+		},
+		{
+			"Name": "InteractiveLabEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"Precompiled": false
+		},
+		{
+			"Name": "GRLeapMotion",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRYolo",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRMatting",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRMediapipe",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRKinectAzure",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRTuio20",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRVSTHost",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "GRVSTHostEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"Precompiled": false,
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "XRBase",
+			"Enabled": true
+		},
+		{
+			"Name": "LidarPointCloud",
+			"Enabled": true
+		},
+		{
+			"Name": "GeometryProcessing",
+			"Enabled": true
+		},
+		{
+			"Name": "CableComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "Niagara",
+			"Enabled": true
+		},
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "Metasound",
+			"Enabled": true
+		},
+		{
+			"Name": "Avalanche",
+			"Enabled":true
+
+		}
+
+	]
+}

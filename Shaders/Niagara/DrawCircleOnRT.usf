@@ -1,0 +1,93 @@
+﻿// ============================================================================
+// Niagara Custom HLSL 节点粘贴模板 - 在 RenderTarget 2D 上画圆
+//
+// 用法:
+// 1. Niagara Emitter 中添加 "Render Target 2D" Data Interface, 命名为 RT
+// 2. 在 Particle Update (GPU) 阶段加 Custom HLSL 节点
+// 3. 粘贴本文件全部内容到节点
+// 4. 节点会自动生成输入引脚, 在 Stack 中绑定参数
+// 5. Emitter 发射 1 个粒子 = 画 1 个圆; 多粒子 = 画多个圆
+// ============================================================================
+
+// ---- 输入引脚 ----
+float2 Center;           // 圆心 (像素坐标)
+float  Radius;           // 半径 (像素)
+float4 StrokeColor;      // 描边色 RGBA (linear, 0-1)
+float  Thickness;        // 描边线宽 (像素)
+int    bFill;            // 1=填充, 0=不填充 (用 int 避免 bool 引脚问题)
+float4 FillColor;        // 填充色 RGBA
+
+// ---- 函数库 ----
+struct GR2DFunctions
+{
+    float sdCircle(float2 P, float2 C, float R)
+    {
+        return length(P - C) - R;
+    }
+
+    float sdCircleBorder(float2 P, float2 C, float R)
+    {
+        return abs(length(P - C) - R);
+    }
+
+    float strokeMask(float dist, float thickness)
+    {
+        float halfT = max(thickness, 1.0) * 0.5;
+        return 1.0 - smoothstep(halfT - 0.5, halfT + 0.5, dist);
+    }
+
+    float fillMask(float dist)
+    {
+        return 1.0 - smoothstep(-0.5, 0.5, dist);
+    }
+
+    float4 alphaOver(float4 Dest, float4 Src)
+    {
+        float outA = Src.a + Dest.a * (1.0 - Src.a);
+        float3 outRGB = (Src.rgb * Src.a + Dest.rgb * Dest.a * (1.0 - Src.a))
+                      / max(outA, 1e-6);
+        return float4(outRGB, outA);
+    }
+};
+GR2DFunctions f;
+
+// ---- 主逻辑 ----
+
+float2 bmin = Center - Radius - Thickness;
+float2 bmax = Center + Radius + Thickness;
+int2 pmin = int2(floor(bmin));
+int2 pmax = int2(ceil(bmax));
+
+for (int y = pmin.y; y <= pmax.y; y++)
+{
+    for (int x = pmin.x; x <= pmax.x; x++)
+    {
+        float2 p = float2(x, y);
+        float4 out = float4(0.0, 0.0, 0.0, 0.0);
+
+        // 1) 填充
+        if (bFill > 0)
+        {
+            float dFill = f.sdCircle(p, Center, Radius);
+            float mFill = f.fillMask(dFill);
+            if (mFill > 0.001)
+            {
+                out = f.alphaOver(out, float4(FillColor.rgb, FillColor.a * mFill));
+            }
+        }
+
+        // 2) 描边
+        float dStroke = f.sdCircleBorder(p, Center, Radius);
+        float mStroke = f.strokeMask(dStroke, Thickness);
+        if (mStroke > 0.001)
+        {
+            out = f.alphaOver(out, float4(StrokeColor.rgb, StrokeColor.a * mStroke));
+        }
+
+        // 3) 写入 RT
+        if (out.a > 0.001)
+        {
+            RT.SetRenderTargetValue(true, x, y, out);
+        }
+    }
+}

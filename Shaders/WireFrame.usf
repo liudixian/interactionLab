@@ -1,0 +1,118 @@
+﻿// 计算四条外边框到当前 UV 的距离
+float dLeft   = UV.x;
+float dRight  = 1.0 - UV.x;
+float dBottom = UV.y;
+float dTop    = 1.0 - UV.y;
+
+// 取到边框的最小距离
+float borderDistance = min(min(dLeft, dRight), min(dBottom, dTop));
+
+// ---------- 网格线距离 ----------
+// GridVec.xy 分别控制 U/V 方向格子数量，<=0 时视为不启用该方向网格
+float2 gridCount = max(GridVec, float2(0.0, 0.0));
+float2 gridUV = UV * max(gridCount, float2(1.0, 1.0));
+float2 cellFrac = frac(gridUV);
+float2 distToGrid = min(cellFrac, 1.0 - cellFrac);
+float gridDistance = min(distToGrid.x, distToGrid.y);
+
+// 计算当前像素到相机的距离
+float dist = distance(WorldPosition, CameraPositionWS);
+
+// 距离归一化，并用 pow 调整曲线
+float t = saturate((dist - NearDistance) / (FarDistance - NearDistance));
+t = pow(t, CurvePow);
+
+// 颜色插值
+float3 lineColor = lerp(NearColor.rgb, FarColor.rgb, t);
+
+// ---------- 屏幕像素线宽控制 ----------
+// 最小线宽，单位是屏幕像素
+float basePixelThickness = ThicknessPixels;
+
+// NearWidth / FarWidth 是对最小线宽的缩放
+float widthScale = lerp(NearWidth, FarWidth, t);
+
+// 实际线宽
+float pixelThickness = basePixelThickness * widthScale;
+
+// 当前距离在屏幕上的变化率
+float borderDx = ddx(borderDistance);
+float borderDy = ddy(borderDistance);
+float borderPixelScale = max(abs(borderDx), abs(borderDy));
+borderPixelScale = max(borderPixelScale, 1e-5);
+
+// 把像素宽度换算成 UV 宽度
+float borderThicknessUV = pixelThickness * borderPixelScale;
+
+// 抗锯齿宽度
+float borderAA = borderPixelScale;
+
+// 外边框遮罩
+float borderMask = smoothstep(borderThicknessUV + borderAA, borderThicknessUV - borderAA, borderDistance);
+
+// 网格遮罩
+float gridDx = ddx(gridDistance);
+float gridDy = ddy(gridDistance);
+float gridPixelScale = max(abs(gridDx), abs(gridDy));
+gridPixelScale = max(gridPixelScale, 1e-5);
+
+float gridThicknessUV = pixelThickness * gridPixelScale;
+float gridAA = gridPixelScale;
+float gridMask = smoothstep(gridThicknessUV + gridAA, gridThicknessUV - gridAA, gridDistance);
+
+// 合并外框和网格
+float mask = saturate(max(borderMask, gridMask));
+
+// 输出
+return float4(lineColor * mask, mask);
+
+
+-------------------------------
+// 计算四条外边框到当前 UV 的距离
+float dLeft   = UV.x;
+float dRight  = 1.0 - UV.x;
+float dBottom = UV.y;
+float dTop    = 1.0 - UV.y;
+
+// 取到边框的最小距离
+float minDistance = min(min(dLeft, dRight), min(dBottom, dTop));
+
+// 计算当前像素到相机的距离
+float dist = distance(WorldPosition, CameraPositionWS);
+
+// 距离归一化，并用 pow 调整曲线
+float t = saturate((dist - NearDistance) / (FarDistance - NearDistance));
+t = pow(t, CurvePow);
+
+// 颜色插值
+float3 lineColor = lerp(NearColor.rgb, FarColor.rgb, t);
+
+// ---------- 屏幕像素线宽控制 ----------
+// 最小线宽，单位是屏幕像素
+float basePixelThickness = ThicknessPixels;
+
+// NearWidth / FarWidth 是对最小线宽的缩放
+float widthScale = lerp(NearWidth, FarWidth, t);
+
+// 实际线宽
+float pixelThickness = basePixelThickness * widthScale;
+
+// 当前 minDistance 在屏幕上的变化率
+float distDx = ddx(minDistance);
+float distDy = ddy(minDistance);
+float pixelScale = max(abs(distDx), abs(distDy));
+
+// 防止除零
+pixelScale = max(pixelScale, 1e-5);
+
+// 把像素宽度换算成 UV 宽度
+float thicknessUV = pixelThickness * pixelScale;
+
+// 抗锯齿宽度
+float aa = pixelScale;
+
+// 生成线框遮罩
+float mask = smoothstep(thicknessUV + aa, thicknessUV - aa, minDistance);
+
+// 输出
+return float4(lineColor * mask, mask);

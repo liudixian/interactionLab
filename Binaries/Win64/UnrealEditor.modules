@@ -1,0 +1,18 @@
+{
+	"BuildId": "55116800",
+	"Modules": 
+	{
+		"GRBodyState": "UnrealEditor-GRBodyState.dll",
+		"GRKinectAzure": "UnrealEditor-GRKinectAzure.dll",
+		"GRLeapMotion": "UnrealEditor-GRLeapMotion.dll",
+		"GRLeapMotionEditor": "UnrealEditor-GRLeapMotionEditor.dll",
+		"GRMatting": "UnrealEditor-GRMatting.dll",
+		"GRMediapipe": "UnrealEditor-GRMediapipe.dll",
+		"GRTuio20": "UnrealEditor-GRTuio20.dll",
+		"GRVSTHost": "UnrealEditor-GRVSTHost.dll",
+		"GRVSTHostEditor": "UnrealEditor-GRVSTHostEditor.dll",
+		"GRYolo": "UnrealEditor-GRYolo.dll",
+		"InteractiveLab": "UnrealEditor-InteractiveLab.dll",
+		"InteractiveLabEditor": "UnrealEditor-InteractiveLabEditor.dll"
+	}
+}

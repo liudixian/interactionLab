@@ -1,0 +1,7 @@
+此文件由插件Blender for UnrealEngine生成: https://github.com/xavier150/Blender-For-UnrealEngine-Addons
+
+0 Skeletal Mesh(s) | 1 Static Mesh(s) | 0 Collection Static Mesh(s) | 0 Camera(s) | 0 Groom Simulation(s) | 0 Spline(s) | 0 Action Animation(s) | 0 Pose Animation(s) | 0 Non Linear Animation(s) | 0 Alembic Animation(s)
+
+ASSET [Static Mesh] 'Cell' EXPORTED IN 7 ms
+ -> Package [Static Mesh] 'Cell' SUCCESS (6 ms)
+    E:\Game\genartLib\Meshed\SM_Meshes\SM_Cell.fbx

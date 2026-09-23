@@ -1,0 +1,110 @@
+﻿// ============================================================================
+// Niagara Custom HLSL 节点粘贴模板 - 任意四边形遮罩函数 (纯函数, 不写 RT)
+// 输入: 测试点 P + 4 个 float2 顶点, 输出: Mask (0..1)
+// 支持凸/凹/自相交四边形 (射线法判定, 与坐标系手性无关)
+//
+// 与 DrawQuadOnRT.usf 的区别:
+//   - DrawQuadOnRT.usf: 遍历 bbox 像素写入 RT (完整绘制操作)
+//   - 本文件: 仅对单个输入点 P 计算遮罩值, 由调用方决定如何使用
+//   - 适用: 粒子过滤 / 位置调制 / 材质 TexCoord 遮罩 / 颜色混合权重等
+//
+// 用法:
+// 1. Niagara Emitter 中加 Custom HLSL 节点 (Particle Update / Emitter Update / Simulation Stage 均可)
+// 2. 粘贴本文件全部内容到节点
+// 3. 节点自动生成输入引脚 P/P0/P1/P2/P3/EdgeSoft, 输出引脚 Mask
+// 4. 在 Stack 中绑定:
+//    - P       = 需要检测的点 (常见绑定: 粒子 Position / ExecutionIndex 转 GridIndex / 自定义 float2)
+//    - P0..P3  = 四边形 4 顶点 (顺/逆时针均可, 顺序连线 P0->P1->P2->P3->P0)
+//    - EdgeSoft = 0 表示硬边 (纯 0/1); >0 表示边缘抗锯齿宽度 (像素, 内部由外向内渐变)
+// 5. 输出 Mask 用法示例:
+//    - 粒子过滤:  Mask > 0.5 作为 Kill/Alive 条件
+//    - 颜色调制:  ParticleColor *= Mask
+//    - 大小调制:  SpriteSize *= Mask
+//    - 位置约束:  Position += Offset * Mask
+// ============================================================================
+
+// ---- 输入引脚 ----
+float2 P;           // 待检测点 (像素坐标, 左上原点)
+float2 P0;          // 四边形顶点 0
+float2 P1;          // 四边形顶点 1
+float2 P2;          // 四边形顶点 2
+float2 P3;          // 四边形顶点 3 (顺序连线: P0->P1->P2->P3->P0)
+float  EdgeSoft;    // 边缘抗锯齿宽度 (0=硬边, >0=内部边缘渐变)
+
+// ---- 输出引脚 ----
+// float Mask;      // 0..1 遮罩 (在主逻辑中赋值)
+
+// ---- 函数库 (与 GR2DGraphics.ush 保持一致, Niagara 不支持稳定 #include 故 inline) ----
+struct GR2DFunctions
+{
+    // 点 P 到线段 AB 的距离
+    float sdLine(float2 P, float2 A, float2 B)
+    {
+        float2 PA = P - A;
+        float2 BA = B - A;
+        float t = saturate(dot(PA, BA) / max(dot(BA, BA), 1e-8));
+        return length(PA - BA * t);
+    }
+
+    // 射线法判断点在任意四边形内 (凸/凹/自相交均可)
+    // 从 P 向右发射水平射线, 统计与边的交点数, 奇数=内部
+    float pointInQuad(float2 P, float2 V0, float2 V1, float2 V2, float2 V3)
+    {
+        float2 edges[4];
+        edges[0] = V0; edges[1] = V1; edges[2] = V2; edges[3] = V3;
+
+        int crossings = 0;
+        for (int i = 0, j = 3; i < 4; j = i++)
+        {
+            float2 A = edges[i];
+            float2 B = edges[j];
+            if (((A.y > P.y) != (B.y > P.y)))
+            {
+                float xIntersect = A.x + (P.y - A.y) * (B.x - A.x) / (B.y - A.y);
+                if (P.x < xIntersect)
+                {
+                    crossings++;
+                }
+            }
+        }
+        return (crossings % 2 == 1) ? 1.0 : 0.0;
+    }
+
+    // 到 4 条边最短距离
+    float sdQuadEdge(float2 P, float2 V0, float2 V1, float2 V2, float2 V3)
+    {
+        float d0 = sdLine(P, V0, V1);
+        float d1 = sdLine(P, V1, V2);
+        float d2 = sdLine(P, V2, V3);
+        float d3 = sdLine(P, V3, V0);
+        return min(min(d0, d1), min(d2, d3));
+    }
+};
+GR2DFunctions f;
+
+// ---- 主逻辑: 计算四边形遮罩 ----
+// 1) 内部判定 (射线法, 支持任意四边形拓扑)
+float inside = f.pointInQuad(P, P0, P1, P2, P3);
+
+// 2) 边缘抗锯齿: 内部靠近边缘时由 1 渐变到 0
+//    EdgeSoft <= 0:  硬边, 直接返回 inside (纯 0/1)
+//    EdgeSoft > 0:   内部点距边 d 像素, mask = saturate(d / EdgeSoft)
+float d = f.sdQuadEdge(P, P0, P1, P2, P3);
+float edgeAA = saturate(d / max(EdgeSoft, 1e-6));
+
+// 3) 组合: 仅当点在内部时, 边缘 AA 才生效
+Mask = inside * edgeAA;
+
+// ============================================================================
+// 备选输出模式 (取消注释替换上面一行即可切换)
+// ============================================================================
+
+// 模式 B: 四边形边框 (描边) 遮罩
+// 需要额外输入: float BorderWidth (边框宽度, 像素)
+// float borderDist = f.sdQuadEdge(P, P0, P1, P2, P3);
+// float halfB = max(BorderWidth, 1.0) * 0.5;
+// Mask = 1.0 - smoothstep(halfB - 0.5, halfB + 0.5, borderDist);
+
+// 模式 C: 同时输出边框 + 距离 (用于下游自定义混合)
+// Distance = f.sdQuadEdge(P, P0, P1, P2, P3);  // 需新增输出引脚 Distance
+// Mask = inside * edgeAA;

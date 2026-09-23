@@ -1,0 +1,122 @@
+﻿# ==============================================================================
+# Perforce P4Ignore rules for genartlib plugin
+# ==============================================================================
+# NOTE: Perforce .p4ignore does NOT support negation (! pattern).
+#       Rules are matched top-down; first match wins.
+#       Anything NOT matched here will be added to Perforce.
+#
+# 策略：排除中间文件/编译产物/源代码生成文件，
+#       保留模型文件、预编译二进制、蓝图资产、源代码。
+# ==============================================================================
+
+# --- Intermediate directory (all build artifacts) ---
+Intermediate/
+
+# --- UE generated reflection code ---
+*.gen.cpp
+*.generated.h
+*.init.gen.cpp
+Module.*.cpp
+PerModuleInline.gen.cpp
+
+# --- UE module binaries (rebuilt from source, 不纳入 P4) ---
+Binaries/Win64/UnrealEditor-*.dll
+Binaries/Win64/UnrealEditor-*.pdb
+Binaries/Win64/UnrealEditor-*.exp
+Binaries/Win64/UnrealEditor-*.lib
+Binaries/Win64/UnrealEditor-*.patch_*
+Binaries/Win64/*.modules
+
+# --- Build byproducts that appear in source dirs ---
+*.obj
+*.o
+*.obj.lc
+*.lc.obj
+*.dep.json
+*.lc.dep.json
+*.sarif
+*.rsp
+*.pdb
+*.ilk
+*.map
+*.exp
+*.rc2.res
+*.rc2.res.rsp
+Timestamp
+LiveCodingInfo.json
+Definitions.*.h
+
+# --- OS / editor junk ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+.vs/
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+
+# --- Git 仓库元数据（genartlib 同时是 git 仓库） ---
+.git/
+.gitignore
+.gitattributes
+
+# --- Trae 工作目录 ---
+.trae/
+
+# --- 临时/调试文件 ---
+TEMP_SKILL.md
+skm.txt
+treeRAW.csv
+XyzBatchConverter.tsx
+
+# --- 许可证文件（不纳入版本控制） ---
+GenartLicense.json
+GenartLicenseActivations.json
+*.lic
+*.license
+
+# --- VST3 SDK 开发环境（完整官方仓库+构建中间产物，不纳入 P4） ---
+# VST3SDK 是官方 VST3 SDK 完整仓库（含内嵌 .git 子模块），
+# staging/unzip/download 目录为本地构建时解压的中间产物，
+# 均不需要提交到 Perforce（避免内嵌 git 仓库与海量中间文件入库）。
+VST3SDK/
+vst3_base_staging/
+vst3_cmake_staging/
+vst3_pluginterfaces_staging/
+cmake_download/
+pub_sdk_unzip/
+
+# --- 开发环境归档压缩包（插件整包备份/SDK 源码包，不纳入 P4） ---
+genartlib.7z
+*.7z
+vst3_public_sdk.zip
+
+# ==============================================================================
+# Files NOT listed above are versioned in Perforce, including:
+#
+#   Source/                                    — all C++ source code
+#   Source/ThirdParty/OnnxRuntime/include/     — ONNX Runtime headers
+#   Source/ThirdParty/OnnxRuntime/lib/         — ONNX Runtime import lib
+#   Source/ThirdParty/OnnxRuntime/models/*.onnx  — YOLO 模型文件 ✓
+#   Source/ThirdParty/OnnxRuntime/models/*.names — 类别名称文件 ✓
+#   Source/ThirdParty/MediapipeBridge/include/  — bridge API headers
+#   Source/ThirdParty/MediapipeBridge/lib/      — bridge import lib
+#   Source/ThirdParty/MediapipeBridge/models/*.task   — MediaPipe 模型文件 ✓
+#   Source/ThirdParty/MediapipeBridge/models/*.tflite — MediaPipe 模型文件 ✓
+#   Source/ThirdParty/LeapSDK/                 — Leap Motion SDK
+#
+#   Binaries/ThirdParty/OnnxRuntime/Win64/*.dll       — ONNX Runtime DLLs ✓
+#   Binaries/ThirdParty/MediapipeBridge/Win64/*.dll   — MediaPipe bridge DLLs ✓
+#   Binaries/Win64/LeapC.dll                          — Leap Motion DLL ✓
+#
+#   Content/                                   — all blueprint assets
+#   Config/FilterPlugin.ini                    — plugin filter
+#   InteractiveLab.uplugin                          — plugin descriptor
+#   Resources/                                 — plugin icons
+#   Shaders/                                   — shader files
+#   Docs/                                      — documentation
+#   README.md                                  — documentation
+# ==============================================================================
