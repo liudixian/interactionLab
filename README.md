@@ -19,9 +19,7 @@ InteractionLab 是面向生成艺术、交互装置与沉浸式投影的综合�
 2. 启动 UE 编辑器，在“插件”中启用 InteractionLab。
 3. 按需放入授权文件（见下文）。
 
-## 授权机制
 
-插件按功能令牌授权，通过 `Config/GenartLicense.json` 校验（Ed25519 签名）。令牌：`pointcloud`、`llm`、`offaxis`、`ultraleap`、`mediapipe`、`yolo`、`kinectazure`、`matting`、`all`。
 
 ## 模块功能一览
 
