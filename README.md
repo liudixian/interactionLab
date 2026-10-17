@@ -7,6 +7,9 @@ InteractionLab 是面向生成艺术、交互装置与沉浸式投影的综合�
 ## 获取免费许可证
 点击一下链接获取免费许可证
 [gr.shuyuren.art](https://gr.shuyuren.art/)
+
+## 查看完整使用文档
+[interactionLab使用教程](https://ocn80okdmx4z.feishu.cn/wiki/FhdTwGlRXib4VikkPjjclRhQn7f?from=from_copylink)
 ## 环境要求
 
 | 项目 | 要求 |
