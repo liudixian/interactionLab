@@ -4,6 +4,9 @@
 
 InteractionLab 是面向生成艺术、交互装置与沉浸式投影的综合功能库，集成人体追踪（MediaPipe / Kinect / Leap）、目标检测（YOLO）、实时抠像（MODNet）、离轴投影、点云与生成艺术等能力。
 
+## 获取免费许可证
+点击一下链接获取免费许可证
+[gr.shuyuren.art](https://gr.shuyuren.art/)
 ## 环境要求
 
 | 项目 | 要求 |
